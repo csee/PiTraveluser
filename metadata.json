@@ -1,0 +1,5 @@
+{
+  "name": "Particle Logo Visualizer",
+  "description": "A web application that visualizes a user list as a particle system forming a logo. Supports interactive dispersal and reassembly.",
+  "requestFramePermissions": []
+}
