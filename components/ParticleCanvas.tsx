@@ -32,18 +32,27 @@ const ParticleCanvas: React.FC<Props> = ({ users }) => {
   // Resize handler state to trigger recalculation
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
+  // Use ResizeObserver to handle initial load and window resizing reliably
   useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight
+    if (!containerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use contentRect to get accurate inner dimensions
+        const { width, height } = entry.contentRect;
+        
+        // Update state only if dimensions have changed effectively
+        setDimensions(prev => {
+          if (Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1) {
+             return prev;
+          }
+          return { width, height };
         });
       }
-    };
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Init
-    return () => window.removeEventListener('resize', handleResize);
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Init particles and targets
@@ -302,7 +311,7 @@ const ParticleCanvas: React.FC<Props> = ({ users }) => {
 
   return (
     <div ref={containerRef} className="w-full h-full relative cursor-grab active:cursor-grabbing">
-      <canvas ref={canvasRef} className="block" />
+      <canvas ref={canvasRef} className="block w-full h-full" />
     </div>
   );
 };
