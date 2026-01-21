@@ -65,16 +65,14 @@ const ParticleCanvas: React.FC<Props> = ({ users }) => {
     // 3. Generate Points for Mode 2 (Text 2)
     const points2 = getPointsFromText("1650", width, height, users.length);
 
-    const newParticles: Particle[] = users.map((user, i) => {
-      const target0 = points0[i];
-      const target1 = points1[i];
-      const target2 = points2[i];
+    const defaultTarget = { x: width / 2, y: height / 2 };
 
-      // Reuse existing particle if available to preserve position during resize?
-      // For simplicity, we re-init. But to keep animation smooth on mode switch, 
-      // we only want to update targets if users didn't change.
-      // However, on resize, positions shift anyway.
-      
+    const newParticles: Particle[] = users.map((user, i) => {
+      // TypeScript safety: Provide fallback if point generation fails or indices mismatch
+      const target0 = points0[i] || defaultTarget;
+      const target1 = points1[i] || defaultTarget;
+      const target2 = points2[i] || defaultTarget;
+
       return {
         x: Math.random() * width,
         y: Math.random() * height,
@@ -120,7 +118,7 @@ const ParticleCanvas: React.FC<Props> = ({ users }) => {
     const width = canvas.width;
     const height = canvas.height;
 
-    // Clear with slight fade for trail effect? No, clean clear for crisp text.
+    // Clear with clean black
     ctx.clearRect(0, 0, width, height);
 
     ctx.save();
@@ -146,33 +144,42 @@ const ParticleCanvas: React.FC<Props> = ({ users }) => {
       const dy = localMouse.y - p.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      const forceDirectionX = dx / distance;
-      const forceDirectionY = dy / distance;
-      
       const maxDistance = mouse.radius; 
-      const force = (maxDistance - distance) / maxDistance;
       
       let directionX = 0;
       let directionY = 0;
 
+      // Interaction Force (Repulsion)
       if (distance < maxDistance && mouse.active && !mouse.isDragging) {
+        const force = (maxDistance - distance) / maxDistance;
+        const forceDirectionX = dx / distance;
+        const forceDirectionY = dy / distance;
         directionX = forceDirectionX * force * p.density * 5;
         directionY = forceDirectionY * force * p.density * 5;
       }
 
       // Physics: Move towards target
+      // If dragging or not interacting, return to target heavily
+      // If interacting, allow repulsion to affect position
       if (distance >= maxDistance || !mouse.active || mouse.isDragging) {
          const dxTarget = p.x - target.x;
          const dyTarget = p.y - target.y;
-         // Ease factor
+         // Ease factor (0.05 to 0.1 is smooth)
          p.x -= (dxTarget / 15);
          p.y -= (dyTarget / 15);
       } else {
          p.x -= directionX;
          p.y -= directionY;
+         
+         // Still apply a weak pull to target even when repulsed, so they don't get stuck forever
+         const dxTarget = p.x - target.x;
+         const dyTarget = p.y - target.y;
+         p.x -= (dxTarget / 30);
+         p.y -= (dyTarget / 30);
       }
 
       ctx.fillStyle = p.color;
+      // Drawing text is expensive, consider using small circles for performance if lagging
       ctx.font = `${p.size}px Arial`; 
       ctx.fillText(p.user.nickname, p.x, p.y);
     });
